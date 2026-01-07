@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Drawing Canvas</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #container {
+    background: #fff;
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  canvas {
+    border: 2px solid #000;
+    background: #fff;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .controls {
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  button {
+    margin: 4px;
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="container">
+  <canvas id="canvas" width="800" height="500"></canvas>
+  <div class="controls">
+    <button onclick="undo()">Undo</button>
+    <button onclick="clearCanvas()">Clear</button>
+    <button onclick="saveImage()">Save PNG</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+let drawing = false;
+let history = [];
+
+// Pencil style
+ctx.lineWidth = 2;
+ctx.lineCap = "round";
+ctx.lineJoin = "round";
+ctx.strokeStyle = "#000";
+ctx.globalAlpha = 0.9;
+
+// Helpers
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function saveState() {
+  history.push(canvas.toDataURL());
+}
+
+// Pointer drawing
+canvas.addEventListener("pointerdown", e => {
+  drawing = true;
+  const p = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener("pointermove", e => {
+  if (!drawing) return;
+  const p = getPos(e);
+  // pencil jitter
+  ctx.lineTo(
+    p.x + (Math.random() - 0.5) * 0.7,
+    p.y + (Math.random() - 0.5) * 0.7
+  );
+  ctx.stroke();
+});
+
+canvas.addEventListener("pointerup", e => {
+  if (!drawing) return;
+  drawing = false;
+  ctx.closePath();
+  saveState();
+  canvas.releasePointerCapture(e.pointerId);
+});
+
+// Actions
+function undo() {
+  if (!history.length) return clearCanvas();
+  history.pop();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (history.length) {
+    const img = new Image();
+    img.src = history[history.length - 1];
+    img.onload = () => ctx.drawImage(img, 0, 0);
+  }
+}
+
+function clearCanvas() {
+  saveState();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function saveImage() {
+  const link = document.createElement("a");
+  link.download = "drawing.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+</script>
+
+</body>
+</html>
